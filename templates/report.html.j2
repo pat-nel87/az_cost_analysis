@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Cost Report — {{ date_range }}</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <style>
+        :root {
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #212529;
+            --muted: #6c757d;
+            --border: #dee2e6;
+            --accent: #0078d4;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+        header h1 { font-size: 1.8rem; color: var(--accent); }
+        header p { color: var(--muted); font-size: 0.9rem; }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .card .label { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .card .value { font-size: 2rem; font-weight: 700; color: var(--accent); margin-top: 0.25rem; }
+        .card .unit { font-size: 0.9rem; color: var(--muted); }
+
+        .chart-section {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .chart-row .chart-section { margin-bottom: 0; }
+
+        .data-table-container {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .data-table-container h2 { margin-bottom: 1rem; font-size: 1.2rem; }
+        #tableSearch {
+            width: 100%;
+            max-width: 400px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--bg);
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+        }
+        th:hover { background: var(--border); }
+        tr:hover { background: #f1f3f5; }
+        .no-data { text-align: center; padding: 3rem; color: var(--muted); font-size: 1.1rem; }
+
+        @media print {
+            body { padding: 1cm; }
+            .chart-row { grid-template-columns: 1fr; }
+            .chart-section { break-inside: avoid; page-break-inside: avoid; }
+            .card { break-inside: avoid; }
+        }
+        @media (max-width: 768px) {
+            .chart-row { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Azure Cost Report</h1>
+        <p>{{ date_range }} &middot; Generated {{ generated_at }}</p>
+    </header>
+
+    <div class="summary-cards">
+        <div class="card">
+            <div class="label">Total Spend</div>
+            <div class="value">${{ "{:,.2f}".format(summaries.total_spend) }}</div>
+            <div class="unit">{{ summaries.currency }}</div>
+        </div>
+        <div class="card">
+            <div class="label">Subscriptions</div>
+            <div class="value">{{ summaries.num_subscriptions }}</div>
+        </div>
+        <div class="card">
+            <div class="label">Resource Groups</div>
+            <div class="value">{{ summaries.num_resource_groups }}</div>
+        </div>
+        <div class="card">
+            <div class="label">Daily Average</div>
+            <div class="value">${{ "{:,.2f}".format(summaries.daily_average) }}</div>
+            <div class="unit">{{ summaries.currency }} / day</div>
+        </div>
+    </div>
+
+    {% if charts.daily_trend %}
+    <div class="chart-section">
+        {{ charts.daily_trend | safe }}
+    </div>
+    {% endif %}
+
+    <div class="chart-row">
+        {% if charts.rg_bar %}
+        <div class="chart-section">
+            {{ charts.rg_bar | safe }}
+        </div>
+        {% endif %}
+        {% if charts.meter_treemap %}
+        <div class="chart-section">
+            {{ charts.meter_treemap | safe }}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if charts.sunburst %}
+    <div class="chart-section">
+        {{ charts.sunburst | safe }}
+    </div>
+    {% endif %}
+
+    {% if not charts.daily_trend and not charts.rg_bar and not charts.meter_treemap and not charts.sunburst %}
+    <div class="chart-section no-data">
+        <p>No cost data available for the selected time range and subscriptions.</p>
+    </div>
+    {% endif %}
+
+    <div class="data-table-container">
+        <h2>Cost Details</h2>
+        {% if table_rows %}
+        <input type="text" id="tableSearch" placeholder="Search costs..." onkeyup="filterTable()">
+        <table id="costTable">
+            <thead>
+                <tr>
+                    {% if table_rows[0].SubscriptionName is defined %}<th onclick="sortTable(0)">Subscription</th>{% endif %}
+                    {% if table_rows[0].ResourceGroup is defined %}<th onclick="sortTable(1)">Resource Group</th>{% endif %}
+                    {% if table_rows[0].MeterCategory is defined %}<th onclick="sortTable(2)">Meter Category</th>{% endif %}
+                    {% if table_rows[0].Cost is defined %}<th onclick="sortTable(3)">Cost</th>{% endif %}
+                    {% if table_rows[0].Currency is defined %}<th>Currency</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_rows %}
+                <tr>
+                    {% if row.SubscriptionName is defined %}<td>{{ row.SubscriptionName }}</td>{% endif %}
+                    {% if row.ResourceGroup is defined %}<td>{{ row.ResourceGroup }}</td>{% endif %}
+                    {% if row.MeterCategory is defined %}<td>{{ row.MeterCategory }}</td>{% endif %}
+                    {% if row.Cost is defined %}<td>${{ "{:,.2f}".format(row.Cost) }}</td>{% endif %}
+                    {% if row.Currency is defined %}<td>{{ row.Currency }}</td>{% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-data">No detailed cost data available.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function filterTable() {
+    const input = document.getElementById('tableSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#costTable tbody tr');
+    rows.forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(input) ? '' : 'none';
+    });
+}
+
+function sortTable(colIdx) {
+    const table = document.getElementById('costTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const dir = table.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+    table.dataset.sortDir = dir;
+
+    rows.sort((a, b) => {
+        let aVal = a.cells[colIdx]?.textContent.trim() || '';
+        let bVal = b.cells[colIdx]?.textContent.trim() || '';
+        // Try numeric comparison (strip $ and commas)
+        const aNum = parseFloat(aVal.replace(/[$,]/g, ''));
+        const bNum = parseFloat(bVal.replace(/[$,]/g, ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            return dir === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+        return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
+</body>
+</html>

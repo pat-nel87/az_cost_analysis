@@ -1,0 +1,2 @@
+[console_scripts]
+azure-cost-analyzer = azure_cost_analyzer.cli:main

@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: azure-cost-analyzer
+Version: 0.1.0
+Summary: CLI tool that sweeps Azure subscriptions and generates interactive HTML cost reports
+Requires-Python: >=3.11
+License-File: LICENSE
+Requires-Dist: azure-identity>=1.16.0
+Requires-Dist: azure-mgmt-costmanagement>=4.0.0
+Requires-Dist: azure-mgmt-resource>=23.0.0
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: plotly>=5.22.0
+Requires-Dist: jinja2>=3.1.0
+Provides-Extra: pdf
+Requires-Dist: playwright>=1.44.0; extra == "pdf"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.14.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Dynamic: license-file
